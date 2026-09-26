@@ -1,21 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1a1a2e"/>
-      <stop offset="100%" style="stop-color:#0f3460"/>
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#161b22"/>
     </linearGradient>
     <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#00d4ff"/>
-      <stop offset="100%" style="stop-color:#0066ff"/>
+      <stop offset="0%" style="stop-color:#58a6ff"/>
+      <stop offset="100%" style="stop-color:#1f6feb"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0b429"/>
+      <stop offset="100%" style="stop-color:#de911d"/>
     </linearGradient>
   </defs>
   <rect width="192" height="192" rx="32" fill="url(#bg)"/>
-  <circle cx="96" cy="80" r="35" fill="none" stroke="url(#accent)" stroke-width="4"/>
-  <path d="M80 75 Q96 60 112 75 Q96 90 80 75" fill="url(#accent)" opacity="0.8"/>
-  <path d="M60 120 L132 120" stroke="url(#accent)" stroke-width="3" stroke-linecap="round"/>
-  <path d="M70 132 L122 132" stroke="url(#accent)" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
-  <path d="M80 144 L112 144" stroke="url(#accent)" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
-  <text x="96" y="88" text-anchor="middle" fill="white" font-size="24" font-weight="bold" font-family="Arial">ES</text>
-  <circle cx="140" cy="60" r="12" fill="url(#accent)" opacity="0.6"/>
-  <text x="140" y="65" text-anchor="middle" fill="white" font-size="10" font-weight="bold" font-family="Arial">A</text>
+  <circle cx="96" cy="78" r="32" fill="none" stroke="url(#accent)" stroke-width="3.5"/>
+  <path d="M82 73 Q96 60 110 73 Q96 86 82 73" fill="url(#accent)" opacity="0.7"/>
+  <text x="96" y="85" text-anchor="middle" fill="#f0f6fc" font-size="22" font-weight="bold" font-family="Arial, sans-serif">M</text>
+  <path d="M58 118 L134 118" stroke="url(#gold)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M68 130 L124 130" stroke="url(#gold)" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+  <path d="M78 142 L114 142" stroke="url(#gold)" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+  <circle cx="138" cy="58" r="11" fill="url(#gold)" opacity="0.8"/>
+  <text x="138" y="62" text-anchor="middle" fill="#0d1117" font-size="9" font-weight="bold" font-family="Arial">ES</text>
 </svg>

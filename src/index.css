@@ -6,17 +6,17 @@
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
   border-radius: 3px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(0, 212, 255, 0.3);
+  background: rgba(88, 166, 255, 0.2);
   border-radius: 3px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 212, 255, 0.5);
+  background: rgba(88, 166, 255, 0.4);
 }
 
 /* Animations */
@@ -25,13 +25,22 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
 }
 
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
 /* TV-friendly focus styles */
 *:focus-visible {
-  outline: 2px solid #00d4ff;
+  outline: 2px solid #58a6ff;
   outline-offset: 2px;
 }
 
@@ -39,7 +48,8 @@
 body {
   -webkit-user-select: none;
   user-select: none;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: #0d1117;
 }
 
 input, textarea {
@@ -63,4 +73,14 @@ input, textarea {
   body {
     font-size: 20px;
   }
+}
+
+/* Pulse animation for recording */
+@keyframes recording-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.recording-indicator {
+  animation: recording-pulse 1.5s ease-in-out infinite;
 }

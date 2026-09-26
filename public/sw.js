@@ -1,4 +1,4 @@
-const CACHE_NAME = 'subtranslate-tv-v1';
+const CACHE_NAME = 'morris-translate-v1';
 const urlsToCache = [
   '/',
   '/index.html',

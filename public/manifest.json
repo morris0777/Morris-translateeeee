@@ -1,12 +1,12 @@
 {
-  "name": "SubTranslate TV - Traductor de Subtítulos",
-  "short_name": "SubTranslate",
-  "description": "Traduce subtítulos al español en tiempo real para Android TV",
+  "name": "Morris Translate - Traductor de Subtítulos",
+  "short_name": "Morris",
+  "description": "Traduce subtítulos a español en tiempo real. Compatible con Android TV 11.0.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "landscape",
-  "background_color": "#1a1a2e",
-  "theme_color": "#1a1a2e",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
   "lang": "es",
   "categories": ["entertainment", "utilities"],
   "icons": [
