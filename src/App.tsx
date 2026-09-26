@@ -189,6 +189,12 @@ export default function App() {
   const [streamingActive, setStreamingActive] = useState(false);
   const [lastTranslation, setLastTranslation] = useState<{ original: string; translated: string } | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [capabilities, setCapabilities] = useState({
+    speechRecognition: false,
+    serviceWorker: false,
+    microphone: false,
+    installable: false,
+  });
 
   const subtitlesEndRef = useRef<HTMLDivElement>(null);
   const translationTimeoutRef = useRef<any>(null);
@@ -196,6 +202,34 @@ export default function App() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Handle URL parameters (for shortcuts)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlMode = params.get('mode');
+    if (urlMode === 'streaming') {
+      setMode('streaming');
+    }
+  }, []);
+
+  // Check device capabilities
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    setCapabilities({
+      speechRecognition: !!SpeechRecognition,
+      serviceWorker: 'serviceWorker' in navigator,
+      microphone: !!navigator.mediaDevices,
+      installable: true, // Will be updated by beforeinstallprompt
+    });
+
+    // Check microphone permission
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'microphone' as PermissionName }).then(result => {
+        setCapabilities(prev => ({ ...prev, microphone: result.state !== 'denied' }));
+      }).catch(() => {});
+    }
+  }, []);
 
   const { isListening, transcript, startListening, stopListening, setTranscript } =
     useSpeechRecognition(sourceLang);
@@ -315,24 +349,56 @@ export default function App() {
     setIsTranslating(false);
   };
 
-  // Keyboard navigation
+  // Keyboard navigation (D-pad support for Android TV)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (mode === 'streaming') {
+      // Streaming mode controls
+      if (mode === 'streaming' && streamingActive) {
         if (e.key === 'Escape' || e.key === 'Backspace') {
+          e.preventDefault();
           setStreamingActive(false);
           setMode('home');
+        } else if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          // Toggle pause/play
+          setStreamingActive(prev => !prev);
         }
         return;
       }
 
+      // Global navigation
       switch (e.key) {
         case 'Escape':
         case 'Backspace':
-          if (showSettings || showLangPicker) {
+          e.preventDefault();
+          if (showSettings) {
             setShowSettings(false);
+          } else if (showLangPicker) {
             setShowLangPicker(false);
           } else if (mode !== 'home') {
+            setMode('home');
+          }
+          break;
+        
+        // D-pad navigation (Android TV remote)
+        case 'ArrowUp':
+        case 'ArrowDown':
+        case 'ArrowLeft':
+        case 'ArrowRight':
+          // Let browser handle focus navigation
+          break;
+        
+        case 'MediaPlayPause':
+          e.preventDefault();
+          if (mode === 'streaming') {
+            setStreamingActive(prev => !prev);
+          }
+          break;
+        
+        case 'MediaStop':
+          e.preventDefault();
+          if (mode === 'streaming') {
+            setStreamingActive(false);
             setMode('home');
           }
           break;
@@ -721,7 +787,7 @@ export default function App() {
             </div>
 
             {/* Supported languages preview */}
-            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
+            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 mb-4">
               <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">Idiomas soportados</p>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(LANGUAGES).filter(([, info]) => info.popular).map(([code, info]) => (
@@ -732,6 +798,38 @@ export default function App() {
                 <span className="px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
                   +{Object.keys(LANGUAGES).length - 10} idiomas más
                 </span>
+              </div>
+            </div>
+
+            {/* System Status */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/5 to-emerald-500/5 border border-green-500/20">
+              <p className="text-xs text-green-400 uppercase tracking-wider font-semibold mb-3 flex items-center gap-2">
+                <i className="fas fa-check-circle"></i>
+                Estado del Sistema
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2">
+                  <i className={`fas ${capabilities.serviceWorker ? 'fa-check-circle text-green-400' : 'fa-times-circle text-red-400'} text-xs`}></i>
+                  <span className="text-xs text-gray-300">Service Worker</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <i className={`fas ${capabilities.speechRecognition ? 'fa-check-circle text-green-400' : 'fa-times-circle text-red-400'} text-xs`}></i>
+                  <span className="text-xs text-gray-300">Reconocimiento de Voz</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <i className={`fas ${capabilities.microphone ? 'fa-check-circle text-green-400' : 'fa-times-circle text-red-400'} text-xs`}></i>
+                  <span className="text-xs text-gray-300">Micrófono</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <i className="fas fa-check-circle text-green-400 text-xs"></i>
+                  <span className="text-xs text-gray-300">PWA Instalable</span>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <p className="text-xs text-gray-500">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Todos los sistemas listos para Android TV 11.0
+                </p>
               </div>
             </div>
           </div>

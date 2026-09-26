@@ -38,10 +38,29 @@
   animation: slideUp 0.4s ease-out;
 }
 
-/* TV-friendly focus styles */
+/* TV-friendly focus styles - D-pad navigation */
 *:focus-visible {
-  outline: 2px solid #58a6ff;
-  outline-offset: 2px;
+  outline: 3px solid #58a6ff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(88, 166, 255, 0.2);
+}
+
+button:focus-visible {
+  transform: scale(1.02);
+  transition: transform 0.15s ease;
+}
+
+/* Android TV D-pad navigation improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch/TV device - larger focus indicators */
+  *:focus-visible {
+    outline: 4px solid #58a6ff;
+    outline-offset: 4px;
+  }
+  
+  button {
+    min-height: 44px;
+  }
 }
 
 /* Prevent text selection on TV */
