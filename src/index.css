@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+/* Custom scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(88, 166, 255, 0.2);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(88, 166, 255, 0.4);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+/* TV-friendly focus styles - D-pad navigation */
+*:focus-visible {
+  outline: 3px solid #58a6ff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(88, 166, 255, 0.2);
+}
+
+button:focus-visible {
+  transform: scale(1.02);
+  transition: transform 0.15s ease;
+}
+
+/* Android TV D-pad navigation improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch/TV device - larger focus indicators */
+  *:focus-visible {
+    outline: 4px solid #58a6ff;
+    outline-offset: 4px;
+  }
+  
+  button {
+    min-height: 44px;
+  }
+}
+
+/* Prevent text selection on TV */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: #0d1117;
+}
+
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Smooth transitions */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Android TV optimizations */
+@media (min-width: 1280px) {
+  body {
+    font-size: 18px;
+  }
+}
+
+@media (min-width: 1920px) {
+  body {
+    font-size: 20px;
+  }
+}
+
+/* Pulse animation for recording */
+@keyframes recording-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.recording-indicator {
+  animation: recording-pulse 1.5s ease-in-out infinite;
+}

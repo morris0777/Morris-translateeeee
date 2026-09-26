@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#161b22"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#58a6ff"/>
+      <stop offset="100%" style="stop-color:#1f6feb"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0b429"/>
+      <stop offset="100%" style="stop-color:#de911d"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="80" fill="url(#bg)"/>
+  <circle cx="256" cy="205" r="85" fill="none" stroke="url(#accent)" stroke-width="8"/>
+  <path d="M215 190 Q256 155 297 190 Q256 225 215 190" fill="url(#accent)" opacity="0.7"/>
+  <text x="256" y="225" text-anchor="middle" fill="#f0f6fc" font-size="70" font-weight="bold" font-family="Arial, sans-serif">M</text>
+  <path d="M148 310 L364 310" stroke="url(#gold)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M178 345 L334 345" stroke="url(#gold)" stroke-width="7" stroke-linecap="round" opacity="0.7"/>
+  <path d="M208 380 L304 380" stroke="url(#gold)" stroke-width="7" stroke-linecap="round" opacity="0.5"/>
+  <circle cx="370" cy="150" r="28" fill="url(#gold)" opacity="0.8"/>
+  <text x="370" y="160" text-anchor="middle" fill="#0d1117" font-size="22" font-weight="bold" font-family="Arial">ES</text>
+</svg>
