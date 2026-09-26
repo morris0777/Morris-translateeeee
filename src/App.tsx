@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useScreenOCR } from './hooks/useScreenOCR';
 
 // Types
 interface SubtitleEntry {
@@ -189,10 +190,12 @@ export default function App() {
   const [streamingActive, setStreamingActive] = useState(false);
   const [lastTranslation, setLastTranslation] = useState<{ original: string; translated: string } | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [captureMode, setCaptureMode] = useState<'audio' | 'screen'>('audio');
   const [capabilities, setCapabilities] = useState({
     speechRecognition: false,
     serviceWorker: false,
     microphone: false,
+    screenCapture: false,
     installable: false,
   });
 
@@ -220,6 +223,7 @@ export default function App() {
       speechRecognition: !!SpeechRecognition,
       serviceWorker: 'serviceWorker' in navigator,
       microphone: !!navigator.mediaDevices,
+      screenCapture: !!navigator.mediaDevices?.getDisplayMedia,
       installable: true, // Will be updated by beforeinstallprompt
     });
 
@@ -233,6 +237,63 @@ export default function App() {
 
   const { isListening, transcript, startListening, stopListening, setTranscript } =
     useSpeechRecognition(sourceLang);
+
+  // Map language codes to Tesseract language codes
+  const getTesseractLang = (langCode: LanguageCode): string => {
+    const map: Record<string, string> = {
+      en: 'eng', es: 'spa', fr: 'fra', de: 'deu', it: 'ita', pt: 'por',
+      nl: 'nld', pl: 'pol', tr: 'tur', sv: 'swe', da: 'dan', no: 'nor',
+      fi: 'fin', el: 'ell', cs: 'ces', hu: 'hun', ro: 'ron', bg: 'bul',
+      hr: 'hrv', sk: 'slk', sl: 'slv', uk: 'ukr', ru: 'rus', ja: 'jpn',
+      ko: 'kor', zh: 'chi_sim', ar: 'ara', hi: 'hin', th: 'tha', vi: 'vie',
+      id: 'ind', ms: 'msa', he: 'heb', fa: 'fas',
+    };
+    return map[langCode] || 'eng';
+  };
+
+  // Screen OCR for reading subtitles
+  const handleOCRTextDetected = useCallback((text: string) => {
+    if (!text.trim()) return;
+    
+    // Translate the detected text
+    (async () => {
+      setIsTranslating(true);
+      const translated = await translateText(text, sourceLang);
+      
+      setSubtitles(prev => {
+        const lastEntry = prev[prev.length - 1];
+        if (lastEntry && lastEntry.original === text) {
+          return prev.map((s, i) =>
+            i === prev.length - 1 ? { ...s, translated, original: text } : s
+          );
+        }
+        return [...prev, {
+          id: Date.now(),
+          original: text,
+          translated,
+          timestamp: new Date(),
+        }];
+      });
+      
+      setLastTranslation({ original: text, translated });
+      setIsTranslating(false);
+    })();
+  }, [sourceLang]);
+
+  const {
+    isCapturing,
+    isProcessing: isOCRProcessing,
+    progress: ocrProgress,
+    lastDetectedText: ocrDetectedText,
+    error: ocrError,
+    startCapture,
+    stopCapture,
+  } = useScreenOCR({
+    targetLanguage: getTesseractLang(sourceLang),
+    onTextDetected: handleOCRTextDetected,
+    scanInterval: 2000,
+    enabled: captureMode === 'screen' && streamingActive,
+  });
 
   // Audio level monitoring for streaming mode
   const startAudioMonitoring = useCallback(async () => {
@@ -318,21 +379,27 @@ export default function App() {
     };
   }, [transcript, sourceLang, isListening, mode]);
 
-  // Streaming mode: auto-start/stop listening
+  // Streaming mode: auto-start/stop based on capture mode
   useEffect(() => {
     if (mode === 'streaming' && streamingActive) {
-      startListening();
-      startAudioMonitoring();
+      if (captureMode === 'audio') {
+        startListening();
+        startAudioMonitoring();
+      } else if (captureMode === 'screen') {
+        startCapture();
+      }
     } else {
       stopListening();
       stopAudioMonitoring();
+      stopCapture();
     }
 
     return () => {
       stopListening();
       stopAudioMonitoring();
+      stopCapture();
     };
-  }, [mode, streamingActive]);
+  }, [mode, streamingActive, captureMode]);
 
   const handleManualTranslate = async () => {
     if (!manualInput.trim()) return;
@@ -462,16 +529,34 @@ export default function App() {
             <span className="text-xs text-white/70">{LANGUAGES[sourceLang].flag} {LANGUAGES[sourceLang].name} → 🇪🇸</span>
           </div>
 
-          {/* Audio level indicator */}
+          {/* Capture mode indicator */}
           {streamingActive && (
             <div className="flex items-center gap-2">
-              <i className="fas fa-microphone text-xs text-green-400"></i>
-              <div className="w-20 h-2 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-100"
-                  style={{ width: `${audioLevel}%` }}
-                ></div>
-              </div>
+              {captureMode === 'audio' ? (
+                <>
+                  <i className="fas fa-microphone text-xs text-green-400"></i>
+                  <div className="w-20 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-100"
+                      style={{ width: `${audioLevel}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-[10px] text-green-400">AUDIO</span>
+                </>
+              ) : (
+                <>
+                  <i className={`fas ${isOCRProcessing ? 'fa-spinner fa-spin' : 'fa-eye'} text-xs text-purple-400`}></i>
+                  <div className="w-20 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-400 to-purple-500 transition-all duration-300"
+                      style={{ width: `${isOCRProcessing ? ocrProgress : 100}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-[10px] text-purple-400">
+                    {isOCRProcessing ? `OCR ${ocrProgress}%` : 'OCR LISTO'}
+                  </span>
+                </>
+              )}
             </div>
           )}
 
@@ -509,15 +594,27 @@ export default function App() {
             </div>
           )}
 
-          {/* Live transcript */}
-          {transcript && streamingActive && (
+          {/* Live transcript / OCR detected text */}
+          {streamingActive && (
             <div className="text-center mb-2">
-              <p
-                className="text-white/60 italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
-                style={{ fontSize: `${fontSize - 4}px` }}
-              >
-                {transcript}...
-              </p>
+              {captureMode === 'audio' && transcript && (
+                <p
+                  className="text-white/60 italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
+                  style={{ fontSize: `${fontSize - 4}px` }}
+                >
+                  <i className="fas fa-microphone text-xs mr-1 text-green-400"></i>
+                  {transcript}...
+                </p>
+              )}
+              {captureMode === 'screen' && ocrDetectedText && (
+                <p
+                  className="text-white/60 italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
+                  style={{ fontSize: `${fontSize - 4}px` }}
+                >
+                  <i className="fas fa-eye text-xs mr-1 text-purple-400"></i>
+                  {ocrDetectedText}
+                </p>
+              )}
             </div>
           )}
 
@@ -821,6 +918,10 @@ export default function App() {
                   <span className="text-xs text-gray-300">Micrófono</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <i className={`fas ${capabilities.screenCapture ? 'fa-check-circle text-green-400' : 'fa-times-circle text-red-400'} text-xs`}></i>
+                  <span className="text-xs text-gray-300">Captura de Pantalla (OCR)</span>
+                </div>
+                <div className="flex items-center gap-2">
                   <i className="fas fa-check-circle text-green-400 text-xs"></i>
                   <span className="text-xs text-gray-300">PWA Instalable</span>
                 </div>
@@ -871,6 +972,84 @@ export default function App() {
               </ol>
             </div>
 
+            {/* Capture mode selection */}
+            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 mb-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">Modo de captura</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setCaptureMode('audio')}
+                  className={`p-4 rounded-xl border-2 transition-all ${
+                    captureMode === 'audio'
+                      ? 'bg-green-500/10 border-green-500/50'
+                      : 'bg-white/[0.02] border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      captureMode === 'audio' ? 'bg-green-500/20' : 'bg-white/5'
+                    }`}>
+                      <i className={`fas fa-microphone text-xl ${captureMode === 'audio' ? 'text-green-400' : 'text-gray-400'}`}></i>
+                    </div>
+                    <div className="text-center">
+                      <p className={`text-sm font-bold ${captureMode === 'audio' ? 'text-green-300' : 'text-gray-300'}`}>
+                        Escuchar Audio
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Captura sonido del TV
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setCaptureMode('screen')}
+                  className={`p-4 rounded-xl border-2 transition-all relative ${
+                    captureMode === 'screen'
+                      ? 'bg-purple-500/10 border-purple-500/50'
+                      : 'bg-white/[0.02] border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30">
+                    <span className="text-[9px] text-purple-300 font-bold">RECOMENDADO</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-2">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      captureMode === 'screen' ? 'bg-purple-500/20' : 'bg-white/5'
+                    }`}>
+                      <i className={`fas fa-tv text-xl ${captureMode === 'screen' ? 'text-purple-400' : 'text-gray-400'}`}></i>
+                    </div>
+                    <div className="text-center">
+                      <p className={`text-sm font-bold ${captureMode === 'screen' ? 'text-purple-300' : 'text-gray-300'}`}>
+                        Leer Subtítulos
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        OCR de la pantalla
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Mode description */}
+              <div className="mt-3 p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                {captureMode === 'audio' ? (
+                  <div className="flex items-start gap-2">
+                    <i className="fas fa-info-circle text-green-400 text-xs mt-0.5"></i>
+                    <p className="text-xs text-gray-400">
+                      <strong className="text-green-300">Escuchar Audio:</strong> Captura el sonido del televisor y lo convierte a texto. Útil cuando no hay subtítulos visibles o el audio es claro.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <i className="fas fa-info-circle text-purple-400 text-xs mt-0.5"></i>
+                    <p className="text-xs text-gray-400">
+                      <strong className="text-purple-300">Leer Subtítulos:</strong> Lee directamente los subtítulos de la pantalla usando OCR. Más preciso y no requiere audio claro. <strong className="text-white">Requiere seleccionar la pantalla completa al iniciar.</strong>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Current config */}
             <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 mb-6">
               <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">Configuración actual</p>
@@ -904,11 +1083,14 @@ export default function App() {
               onClick={() => setStreamingActive(true)}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-500 to-orange-600 text-white font-bold text-lg hover:from-red-400 hover:to-orange-500 transition-all shadow-xl shadow-red-500/20 focus:outline-none focus:ring-4 focus:ring-red-400/50"
             >
-              <i className="fas fa-play mr-2"></i>Iniciar Traducción en Vivo
+              <i className={`fas ${captureMode === 'audio' ? 'fa-microphone' : 'fa-tv'} mr-2`}></i>
+              {captureMode === 'audio' ? 'Iniciar Captura de Audio' : 'Iniciar Lectura de Subtítulos'}
             </button>
 
             <p className="text-center text-xs text-gray-500 mt-3">
-              Se necesita acceso al micrófono para captar el audio del televisor
+              {captureMode === 'audio' 
+                ? 'Se necesita acceso al micrófono para captar el audio del televisor'
+                : 'Se te pedirá seleccionar la pantalla completa del televisor'}
             </p>
 
             {/* Back button */}
@@ -1039,28 +1221,67 @@ export default function App() {
                 Paso 2: Usar con Netflix, Disney+, HBO, etc.
               </h3>
               <div className="space-y-3 text-sm text-gray-300">
-                <p>Morris Translate funciona escuchando el audio de tu televisor a través del micrófono. Así se configura:</p>
-                <div className="space-y-2 ml-4">
-                  <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-red-500/20 text-red-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</span>
-                    <span>Abre tu app de streaming (Netflix, Disney+, Prime Video, HBO Max, etc.)</span>
+                <p>Morris Translate ofrece <strong className="text-white">dos modos de captura</strong> para traducir subtítulos en tiempo real:</p>
+                
+                {/* Audio Mode */}
+                <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                  <p className="text-green-300 font-bold mb-2 flex items-center gap-2">
+                    <i className="fas fa-microphone"></i>
+                    Modo 1: Escuchar Audio
+                  </p>
+                  <p className="text-xs text-gray-400 mb-2">Captura el sonido del televisor y lo convierte a texto</p>
+                  <div className="space-y-1.5 ml-4">
+                    <div className="flex items-start gap-2">
+                      <span className="w-4 h-4 rounded-full bg-green-500/20 text-green-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">1</span>
+                      <span className="text-xs">Abre tu app de streaming y activa los subtítulos en el idioma original</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-4 h-4 rounded-full bg-green-500/20 text-green-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">2</span>
+                      <span className="text-xs">En Morris Translate, selecciona <strong className="text-white">"Escuchar Audio"</strong></span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-4 h-4 rounded-full bg-green-500/20 text-green-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">3</span>
+                      <span className="text-xs">Presiona <strong className="text-white">"Iniciar Captura de Audio"</strong></span>
+                    </div>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-red-500/20 text-red-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</span>
-                    <span>Activa los <strong className="text-white">subtítulos originales</strong> en el idioma que quieres traducir (ej: inglés, italiano, japonés)</span>
+                </div>
+
+                {/* OCR Mode */}
+                <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                  <p className="text-purple-300 font-bold mb-2 flex items-center gap-2">
+                    <i className="fas fa-tv"></i>
+                    Modo 2: Leer Subtítulos (OCR) <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 ml-2">RECOMENDADO</span>
+                  </p>
+                  <p className="text-xs text-gray-400 mb-2">Lee directamente los subtítulos de la pantalla usando OCR</p>
+                  <div className="space-y-1.5 ml-4">
+                    <div className="flex items-start gap-2">
+                      <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">1</span>
+                      <span className="text-xs">Abre tu app de streaming y activa los subtítulos en el idioma original</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">2</span>
+                      <span className="text-xs">En Morris Translate, selecciona <strong className="text-white">"Leer Subtítulos"</strong></span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">3</span>
+                      <span className="text-xs">Presiona <strong className="text-white">"Iniciar Lectura de Subtítulos"</strong></span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">4</span>
+                      <span className="text-xs"><strong className="text-white">Selecciona la pantalla completa</strong> del televisor cuando se te solicite</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">5</span>
+                      <span className="text-xs">Morris leerá los subtítulos automáticamente y los traducirá al español</span>
+                    </div>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-red-500/20 text-red-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</span>
-                    <span>Abre Morris Translate y selecciona <strong className="text-white">"Modo Streaming"</strong></span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-red-500/20 text-red-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">4</span>
-                    <span>Selecciona el idioma de los subtítulos originales</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-red-500/20 text-red-300 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">5</span>
-                    <span>Presiona <strong className="text-white">"Iniciar Traducción"</strong> — Morris escuchará el audio y mostrará la traducción al español como overlay</span>
-                  </div>
+                </div>
+
+                <div className="mt-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <p className="text-xs text-blue-300">
+                    <i className="fas fa-lightbulb mr-1"></i>
+                    <strong>Consejo:</strong> El modo OCR es más preciso porque lee directamente los subtítulos, sin depender del audio o ruido ambiental.
+                  </p>
                 </div>
               </div>
             </div>
